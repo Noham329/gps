@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ma Position</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Chargement de votre position...</div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Initialisation de la carte
+        const map = L.map('map');
+        
+        // Configuration des tuiles OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Marqueur pour la position de l'utilisateur
+        let userMarker = null;
+        
+        // Fonction pour gérer la géolocalisation
+        function locateUser() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    showPosition, 
+                    showError, 
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 10000,
+                        timeout: 5000
+                    }
+                );
+            } else {
+                document.getElementById('info').textContent = 
+                    "La géolocalisation n'est pas supportée par votre navigateur.";
+            }
+        }
+
+        // Fonction appelée quand la position est obtenue
+        function showPosition(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            
+            // Mise à jour de l'info
+            document.getElementById('info').innerHTML = `
+                <strong>Votre position</strong><br>
+                Latitude: ${lat.toFixed(6)}<br>
+                Longitude: ${lng.toFixed(6)}<br>
+                Précision: ~${Math.round(accuracy)} mètres
+            `;
+            
+            // Centre la carte sur la position
+            map.setView([lat, lng], 15);
+            
+            // Ajoute ou met à jour le marqueur
+            if (userMarker) {
+                userMarker.setLatLng([lat, lng]);
+            } else {
+                userMarker = L.marker([lat, lng]).addTo(map)
+                    .bindPopup("Vous êtes ici!").openPopup();
+                
+                // Ajoute un cercle pour la précision
+                L.circle([lat, lng], {
+                    color: 'blue',
+                    fillColor: '#0078ff',
+                    fillOpacity: 0.2,
+                    radius: accuracy
+                }).addTo(map);
+            }
+        }
+
+        // Fonction pour gérer les erreurs
+        function showError(error) {
+            let message = "Erreur de géolocalisation: ";
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message += "Vous avez refusé la demande de géolocalisation.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message += "Les informations de localisation ne sont pas disponibles.";
+                    break;
+                case error.TIMEOUT:
+                    message += "La demande de localisation a expiré.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    message += "Une erreur inconnue s'est produite.";
+                    break;
+            }
+            document.getElementById('info').textContent = message;
+        }
+
+        // Lance la géolocalisation quand la page est chargée
+        window.onload = locateUser;
+    </script>
+</body>
+</html>
